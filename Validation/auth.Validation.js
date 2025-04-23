@@ -1,6 +1,5 @@
 const Joi = require('joi');
 
-// Ro'yxatdan o'tish uchun validatsiya sxemasi
 const registerSchema = Joi.object({
     username: Joi.string()
         .min(3)
@@ -45,8 +44,6 @@ const validateRegister = (req, res, next) => {
     }
     next();
 };
-
-// Email tasdiqlash uchun validatsiya sxemasi
 const verifyEmailSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -74,7 +71,6 @@ const validateVerifyEmail = (req, res, next) => {
     next();
 };
 
-// Kirish uchun validatsiya sxemasi
 const loginSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -100,7 +96,6 @@ const validateLogin = (req, res, next) => {
     next();
 };
 
-// Refresh token uchun validatsiya sxemasi
 const refreshTokenSchema = Joi.object({
     refreshToken: Joi.string()
         .required()
@@ -118,7 +113,6 @@ const validateRefreshToken = (req, res, next) => {
     next();
 };
 
-// Parolni unutganlar uchun validatsiya sxemasi
 const forgotPasswordSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -138,7 +132,6 @@ const validateForgotPassword = (req, res, next) => {
     next();
 };
 
-// Parolni o‘zgartirish uchun validatsiya sxemasi
 const changePasswordSchema = Joi.object({
     email: Joi.string()
         .email()

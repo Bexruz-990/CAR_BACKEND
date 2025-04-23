@@ -2,11 +2,7 @@ const express = require('express');
 const router = express.Router();
 const upload = require('../utils/multerConfig');
 const {
-    createCar,
-    getAllCars,
-    getCarById,
-    updateCar,
-    deleteCar
+    createCar, getAllCars, getCarById, updateCar, deleteCar
 } = require('../controller/cars.controller');
 const { validateCar } = require('../Validation/car.Validation');
 router.post('/', upload.single('image'), validateCar, createCar);

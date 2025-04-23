@@ -6,8 +6,6 @@ const getProfile = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
         }
-
-        // Ensure profile exists; return empty object if undefined
         res.status(200).json(user.profile || {});
     } catch (error) {
         console.error('Profil olish xatosi:', error.message);

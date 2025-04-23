@@ -1,23 +1,35 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+const JWT_SECRET = process.env.JWT_SECRET;
 
-  // Token mavjudligini tekshirish
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token topilmadi' });
-  }
+const verifyToken = (token, secret) => {
+    return new Promise((resolve, reject) => {
+        jwt.verify(token, secret, (err, decoded) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(decoded);
+            }
+        });
+    });
+};
 
-  const token = authHeader.split(' ')[1];
+const authMiddleware = async (req, res, next) => {
+    // Tokenni cookie’dan o‘qiyapmiz
+    const token = req.cookies.accessToken;
 
-  try {
-    // Tokenni tekshirish va foydalanuvchini olish
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.id };
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Noto‘g‘ri yoki eskirgan token' });
-  }
+    if (!token) {
+        return res.status(401).json({ message: "Token topilmadi" });
+    }
+
+    try {
+        const decoded = await verifyToken(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(403).json({ message: "Token noto‘g‘ri yoki muddati tugagan" });
+    }
 };
 
 module.exports = authMiddleware;

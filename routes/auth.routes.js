@@ -2,23 +2,11 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require("../middleware/auth.middleware");
 const {
-    validateRegister,
-    validateVerifyEmail,
-    validateLogin,
-    validateRefreshToken,
-    validateForgotPassword,
-    validateChangePassword,
+    validateRegister, validateVerifyEmail, validateLogin, validateRefreshToken, validateForgotPassword, validateChangePassword,
 } = require("../Validation/auth.Validation");
 const {
-    register,
-    verifyEmail,
-    login,
-    refreshToken,
-    logout,
-    forgotPassword,
-    changePassword,
+    register, verifyEmail, login, refreshToken, logout, changePassword, forgotPassword,
 } = require("../controller/auth.controller");
-
 
 router.post('/register', validateRegister, register);
 router.post('/verify', validateVerifyEmail, verifyEmail);

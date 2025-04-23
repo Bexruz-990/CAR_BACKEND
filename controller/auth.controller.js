@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken, REFRESH_SECRET } = require('../utils/jwt');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/email');
+const BaseError = require("../utils/BaseError");
 
 const register = async (req, res) => {
     try {
@@ -28,7 +29,7 @@ const register = async (req, res) => {
         await user.save();
         await sendEmail(email, verificationCode);
 
-        res.status(201).json({ message: "Ro'yxatdan o'tildi kod emailingizga yuborildi." });
+        res.status(201).json({ message: "Ro'yxatdan o'tildi, kod emailingizga yuborildi." });
     } catch (error) {
         console.error('Register xatosi:', error.message);
         if (error.name === 'ValidationError') {
@@ -51,7 +52,7 @@ const verifyEmail = async (req, res) => {
         }
 
         user.isVerified = true;
-        user.verificationCode = null;
+        user.otp = null;
         await user.save();
 
         res.status(200).json({ message: 'Email muvaffaqiyatli tasdiqlandi' });
@@ -66,23 +67,38 @@ const login = async (req, res) => {
         const { email, password } = req.body;
 
         const user = await User.findOne({ email });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ message: 'Email yoki parol xato' });
+        if (!user) {
+            return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
         }
 
-        if (!user.isVerified) {
-            return res.status(403).json({ message: 'Email tasdiqlanmagan' });
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Parol noto‘g‘ri' });
         }
 
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
+
+        // Refresh tokenni foydalanuvchi ma'lumotlar bazasida saqlaymiz
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.status(200).json({ accessToken, refreshToken });
+        // Cookie sozlamasini to‘g‘rilaymiz
+        res.cookie("accessToken", accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // boolean qiymat
+            sameSite: "strict",
+            maxAge: 15 * 60 * 1000 // 15 daqiqa (access token muddati bilan mos)
+        });
+
+        res.status(200).json({
+            message: "Tizimga kirish muvaffaqiyatli",
+            accessToken,
+            refreshToken,
+        });
     } catch (error) {
-        console.error('Login xatosi:', error.message);
-        res.status(500).json({ message: 'Server xatosi' });
+        console.error('Login xatolik:', error);
+        res.status(500).json({ message: 'Tizimga kirishda xatolik yuz berdi' });
     }
 };
 
@@ -113,6 +129,14 @@ const logout = async (req, res) => {
 
         user.refreshToken = null;
         await user.save();
+
+        // Cookie’ni tozalaymiz
+        res.clearCookie("accessToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+
         res.status(200).json({ message: 'Chiqildi' });
     } catch (error) {
         console.error('Logout xatosi:', error.message);
@@ -141,32 +165,32 @@ const forgotPassword = async (req, res) => {
     }
 };
 
-const changePassword = async (req, res, next) => {
+const changePassword = async (req, res) => {
     try {
-      const { email, code, newPassword } = req.body;
-  
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
-      }
-  
-      if (
-        user.resetPasswordCode !== code ||
-        new Date() > user.resetPasswordExpires
-      ) {
-        return res.status(400).json({ message: "Kod noto‘g‘ri yoki eskirgan" });
-      }
-  
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.password = hashedPassword;
-      user.resetPasswordCode = undefined;
-      user.resetPasswordExpires = undefined;
-      await user.save();
-  
-      return res.status(200).json({ message: "Parol muvaffaqiyatli o'zgartirildi!" });
+        const { email, code, newPassword } = req.body;
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+        }
+
+        if (
+            user.resetPasswordCode !== code ||
+            new Date() > user.resetPasswordExpires
+        ) {
+            return res.status(400).json({ message: "Kod noto‘g‘ri yoki eskirgan" });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        user.resetPasswordCode = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return res.status(200).json({ message: "Parol muvaffaqiyatli o'zgartirildi!" });
     } catch (error) {
-      console.error('Change password xatosi:', error.message);
-      return res.status(500).json({ message: "Server xatosi", error: error.message });
+        console.error('Change password xatosi:', error.message);
+        return res.status(500).json({ message: "Server xatosi", error: error.message });
     }
 };
 
