@@ -73,4 +73,4 @@ userSchema.set("toJSON", {
     },
 });
 
-module.exports = model("User", userSchema);
+module.exports = model("User", userSchema); 

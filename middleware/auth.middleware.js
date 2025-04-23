@@ -16,7 +16,6 @@ const verifyToken = (token, secret) => {
 };
 
 const authMiddleware = async (req, res, next) => {
-    // Tokenni cookie’dan o‘qiyapmiz
     const token = req.cookies.accessToken;
 
     if (!token) {

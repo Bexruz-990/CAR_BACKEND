@@ -1,8 +1,9 @@
 const bcrypt = require('bcrypt');
-const User = require('../models/User');
-const { generateAccessToken, generateRefreshToken, REFRESH_SECRET } = require('../utils/jwt');
+// const User = require("../models/User");
+const { generateAccessToken, generateRefreshToken, REFRESH_SECRET } = require("../utils/jwt");
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/email');
+const User = require("../models/User")
 const BaseError = require("../utils/BaseError");
 
 const register = async (req, res) => {
@@ -16,7 +17,7 @@ const register = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
+        console.log('Generated verificationCode:', verificationCode);
         const user = new User({
             username,
             email,
@@ -25,6 +26,10 @@ const register = async (req, res) => {
             otp: verificationCode,
             isVerified: false,
         });
+
+        await user.save();
+        const savedUser = await User.findOne({ email });
+        console.log('Saved user OTP:', savedUser.otp);
 
         await user.save();
         await sendEmail(email, verificationCode);
@@ -65,30 +70,29 @@ const verifyEmail = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
         }
 
+        // 2. Parolni tekshiramiz
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Parol noto‘g‘ri' });
         }
 
-        const accessToken = generateAccessToken(user);
-        const refreshToken = generateRefreshToken(user);
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
 
-        // Refresh tokenni foydalanuvchi ma'lumotlar bazasida saqlaymiz
+        // 4. Refresh tokenni user modeliga saqlaymiz
         user.refreshToken = refreshToken;
         await user.save();
 
-        // Cookie sozlamasini to‘g‘rilaymiz
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // boolean qiymat
+            secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 15 * 60 * 1000 // 15 daqiqa (access token muddati bilan mos)
+            maxAge: 15 * 60 * 1000
         });
 
         res.status(200).json({
