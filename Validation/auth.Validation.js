@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+// Register Schema
 const registerSchema = Joi.object({
     username: Joi.string()
         .min(3)
@@ -37,6 +38,7 @@ const registerSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateRegister = (req, res, next) => {
     const { error } = registerSchema.validate(req.body);
     if (error) {
@@ -44,6 +46,8 @@ const validateRegister = (req, res, next) => {
     }
     next();
 };
+
+// Verify Email Schema
 const verifyEmailSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -63,6 +67,7 @@ const verifyEmailSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateVerifyEmail = (req, res, next) => {
     const { error } = verifyEmailSchema.validate(req.body);
     if (error) {
@@ -71,6 +76,7 @@ const validateVerifyEmail = (req, res, next) => {
     next();
 };
 
+// Login Schema
 const loginSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -88,6 +94,7 @@ const loginSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateLogin = (req, res, next) => {
     const { error } = loginSchema.validate(req.body);
     if (error) {
@@ -96,6 +103,7 @@ const validateLogin = (req, res, next) => {
     next();
 };
 
+// Refresh Token Schema
 const refreshTokenSchema = Joi.object({
     refreshToken: Joi.string()
         .required()
@@ -105,6 +113,7 @@ const refreshTokenSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateRefreshToken = (req, res, next) => {
     const { error } = refreshTokenSchema.validate(req.body);
     if (error) {
@@ -113,6 +122,7 @@ const validateRefreshToken = (req, res, next) => {
     next();
 };
 
+// Forgot Password Schema
 const forgotPasswordSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -124,6 +134,7 @@ const forgotPasswordSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateForgotPassword = (req, res, next) => {
     const { error } = forgotPasswordSchema.validate(req.body);
     if (error) {
@@ -132,6 +143,7 @@ const validateForgotPassword = (req, res, next) => {
     next();
 };
 
+// Change Password Schema
 const changePasswordSchema = Joi.object({
     email: Joi.string()
         .email()
@@ -159,6 +171,7 @@ const changePasswordSchema = Joi.object({
         }),
 });
 
+// Validation Middleware
 const validateChangePassword = (req, res, next) => {
     const { error } = changePasswordSchema.validate(req.body);
     if (error) {

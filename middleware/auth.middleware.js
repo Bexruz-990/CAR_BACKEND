@@ -16,7 +16,7 @@ const verifyToken = (token, secret) => {
 };
 
 const authMiddleware = async (req, res, next) => {
-    const token = req.cookies.accessToken;
+    const token = req.cookies.accessToken || req.headers['authorization']?.split(' ')[1]; 
 
     if (!token) {
         return res.status(401).json({ message: "Token topilmadi" });
@@ -31,4 +31,16 @@ const authMiddleware = async (req, res, next) => {
     }
 };
 
-module.exports = authMiddleware;
+const profileMiddleware = (req, res, next) => {
+    if (!req.user) {
+        return res.status(403).json({ message: "Foydalanuvchi ma'lumotlari mavjud emas" });
+    }
+
+    if (req.user.id !== req.params.id) {
+        return res.status(403).json({ message: "Siz faqat o'zingizning profilga kirishingiz mumkin" });
+    }
+
+    next();
+};
+
+module.exports = { authMiddleware, profileMiddleware };

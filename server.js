@@ -3,12 +3,12 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser'); // cookie-parser ni import qilamiz
 const connectDB = require('./config/db');
-const authMiddleware = require('./middleware/auth.middleware');
+const {authMiddleware} = require('./middleware/auth.middleware');
 const { adminMiddleware, SuperadminMiddleware } = require('./middleware/admin');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require("./routes/auth.routes");
 const categoryRoutes = require("./routes/categories.routes");
-const carRoutes = require('./routes/cars.routes'); 
+const carRoutes = require('./routes/cars.routes');
 const profileRoutes = require('./routes/profile.routes');
 const adminRoutes = require('./routes/admin.routes');
 const logger = require('./utils/logger');
@@ -20,19 +20,18 @@ const app = express();
 // Middleware’lar
 app.use(express.json());
 app.use(cors());
-app.use(cookieParser()); // cookie-parser middleware’ini qo‘shdik
+app.use(cookieParser());
 
 // MongoDB ulanish
 connectDB();
 
 // Routelar
-app.use('/auth', authRoutes); // Auth routelari uchun prefiks qo‘shdik
-app.use('/admin', authMiddleware, SuperadminMiddleware, adminRoutes); // Admin routelari uchun prefiks
-app.use('/categories', authMiddleware, categoryRoutes); // Categories routelari uchun prefiks
-app.use('/cars', authMiddleware, carRoutes); // Cars routelari uchun prefiks
-app.use('/profile', authMiddleware, profileRoutes); // Profile routelari uchun prefiks
+app.use('/auth', authRoutes);
+app.use('/admin', authMiddleware, SuperadminMiddleware, adminRoutes); 
+app.use('/categories', authMiddleware, categoryRoutes);
+app.use('/cars', authMiddleware, carRoutes);
+app.use('/profile', authMiddleware, profileRoutes);
 
-// Xatolarni boshqarish middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 4001;

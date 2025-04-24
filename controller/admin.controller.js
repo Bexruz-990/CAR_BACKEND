@@ -1,25 +1,39 @@
-const User = require('../models/User'); // User modelini import qilamiz
+const User = require('../models/User');
 
+// Barcha foydalanuvchilarni olish (admin yoki superadmin)
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password -refreshToken -otp -resetPasswordCode -otpExpires'); // Sezgir ma'lumotlarni olib tashlaymiz
-        if (!users || users.length === 0) {
+        const currentUser = await User.findById(req.user.id);
+        if (!currentUser || !['admin', 'superadmin'].includes(currentUser.role)) {
+            return res.status(403).json({ message: 'Ruxsat yo‘q' });
+        }
+
+        const users = await User.find().select('-password -refreshToken -otp -resetPasswordCode -otpExpires');
+        if (!users.length) {
             return res.status(404).json({ message: 'Foydalanuvchilar topilmadi' });
         }
+
         res.status(200).json({ success: true, data: users });
     } catch (error) {
-        console.error('Foydalanuvchilarni olish xatosi:', error);
-        res.status(500).json({ success: false, message: 'Server xatosi' });
+        console.error('getAllUsers xatolik:', error);
+        res.status(500).json({ message: 'Server xatosi' });
     }
 };
 
+// Foydalanuvchining rolini yangilash (faqat superadmin)
 const updateUserRole = async (req, res) => {
     try {
+        const currentUser = await User.findById(req.user.id);
+        if (!currentUser || currentUser.role !== 'superadmin') {
+            return res.status(403).json({ message: 'Faqat superadmin rol o‘zgartira oladi' });
+        }
+
         const { id } = req.params;
         const { role } = req.body;
 
-        if (!role) {
-            return res.status(400).json({ message: 'Rolni kiritish majburiy' });
+        const validRoles = ['user', 'admin', 'superadmin'];
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({ message: `Noto‘g‘ri rol. Faqat ${validRoles.join(', ')}` });
         }
 
         const user = await User.findById(id);
@@ -27,43 +41,37 @@ const updateUserRole = async (req, res) => {
             return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
         }
 
-        // User modelidagi enum bilan moslashtiramiz
-        const validRoles = ['user', 'admin', 'superadmin']; // User.js da aniqlangan rollar
-        if (!validRoles.includes(role)) {
-            return res.status(400).json({ message: `Noto'g'ri rol. Faqat ${validRoles.join(', ')} rollaridan birini tanlang.` });
-        }
-
         user.role = role;
         await user.save();
 
-        res.status(200).json({ message: 'Foydalanuvchi roli yangilandi', user: user.toJSON() }); // toJSON ni ishlatamiz (User.js da aniqlangan transform)
+        res.status(200).json({ message: 'Roli yangilandi', user });
     } catch (error) {
-        console.error('Rol o‘zgartirish xatosi:', error);
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({ message: 'Validatsiya xatosi', errors });
-        }
+        console.error('updateUserRole xatolik:', error);
         res.status(500).json({ message: 'Server xatosi' });
     }
 };
 
+// Foydalanuvchini o‘chirish (o‘zini o‘chirib bo‘lmaydi)
 const deleteUser = async (req, res) => {
     try {
-        const { id } = req.params;
+        const currentUser = await User.findById(req.user.id);
 
-        // O‘chirilayotgan foydalanuvchi o‘zi bo‘lmasligini tekshirish (agar kerak bo‘lsa)
-        if (req.user.id === id) {
+        if (req.user.id === req.params.id) {
             return res.status(400).json({ message: 'O‘zingizni o‘chira olmaysiz' });
         }
 
-        const user = await User.findByIdAndDelete(id);
+        if (!currentUser || !['admin', 'superadmin'].includes(currentUser.role)) {
+            return res.status(403).json({ message: 'Faqat admin yoki superadmin foydalanuvchini o‘chira oladi' });
+        }
+
+        const user = await User.findByIdAndDelete(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
         }
 
         res.status(200).json({ message: 'Foydalanuvchi o‘chirildi' });
     } catch (error) {
-        console.error('Foydalanuvchi o‘chirish xatosi:', error);
+        console.error('deleteUser xatolik:', error);
         res.status(500).json({ message: 'Server xatosi' });
     }
 };

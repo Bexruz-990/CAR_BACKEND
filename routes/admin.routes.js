@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require("../middleware/auth.middleware");
+const {authMiddleware} = require("../middleware/auth.middleware");
 const { AdminOrSuperadminMiddleware } = require("../middleware/admin");
 const { validateId } = require("../validation/admin.validation");
 const {getAllUsers, updateUserRole, deleteUser} = require("../controller/admin.controller");

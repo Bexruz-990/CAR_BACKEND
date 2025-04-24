@@ -1,43 +1,27 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const authMiddleware = require("../middleware/auth.middleware");
-const {
-  validateRegister,
-  validateVerifyEmail,
-  validateLogin,
-  validateRefreshToken,
-  validateForgotPassword,
-  validateChangePassword,
-} = require("../validation/auth.validation");
-const {
-  register,
-  verifyEmail,
-  login,
-  refreshToken,
-  logout,
-  forgotPassword,
-  changePassword,
-} = require("../controller/auth.controller");
+const {register, verifyEmail, refreshToken, login, logout, forgotPassword, changePassword} = require("../controller/auth.controller");
+const {authMiddleware} = require("../middleware/auth.middleware");
 
 // Ro'yxatdan o'tish
-router.post("/register", validateRegister, register);
+router.post('/register', register);
 
-// Email tasdiqlash
-router.post("/verify", validateVerifyEmail, verifyEmail);
+// Emailni tasdiqlash
+router.post('/verify', verifyEmail);
 
-// Tizimga kirish
-router.post("/login", validateLogin, login);
+// Kirish
+router.post('/login', login);
 
-// Refresh token orqali yangi access token olish
-router.post("/refresh-token", validateRefreshToken, refreshToken);
+// Refresh token
+router.post('/refresh-token', refreshToken);
 
-// Parolni unutganlar uchun kod yuborish
-router.post("/forgot-password", validateForgotPassword, forgotPassword);
+// Chiqish
+router.post('/logout', authMiddleware, logout);
 
-// Tizimdan chiqish (JWT autentifikatsiyasi talab qilinadi)
-router.post("/logout", authMiddleware, logout);
+// Parolni tiklash kodi yuborish
+router.post('/forgot-password', forgotPassword);
 
-// Parolni o'zgartirish
-router.post("/change-password", validateChangePassword, changePassword);
+// Parolni yangilash
+router.post('/change-password', changePassword);
 
 module.exports = router;

@@ -7,12 +7,12 @@ const {
   getProfileData // bu yerda to‘g‘ri nomda import qilinganiga ishonch hosil qiling
 } = require('../controller/profile.controller');
 
-const authMiddleware = require("../middleware/auth.middleware");
-const ValidationProfile = require("../Validation/profile.Validation");
+const {profileMiddleware} = require("../middleware/auth.middleware");
+const  {validateProfileUpdate} = require("../Validation/profile.Validation");
 
-router.get('/', authMiddleware, getProfile);
-router.put('/', authMiddleware, ValidationProfile.validateProfileUpdate, updateProfile);
+router.get('/', profileMiddleware, getProfile);
+router.put('/', profileMiddleware, validateProfileUpdate, updateProfile);
 
-router.get('/data', authMiddleware, getProfileData);
+router.get('/data', profileMiddleware, getProfileData);
 
 module.exports = router;
