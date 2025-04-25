@@ -1,4 +1,6 @@
 const Category = require('../models/Category');
+const Car = require('../models/Car'); // Car modelini qo'shish
+const axios = require('axios');
 
 const getAllCategories = async (req, res) => {
     try {
@@ -35,19 +37,41 @@ const createCategory = async (req, res) => {
 
 const deleteCategory = async (req, res) => {
     try {
-        const { name } = req.params;
-
-        const category = await Category.findOneAndDelete({ name });
-        if (!category) {
-            return res.status(404).json({ message: 'Kategoriya topilmadi' });
-        }
-
-        res.status(200).json({ message: 'Kategoriya o‘chirildi' });
+      // Superadmin yoki admin rolini tekshirish
+      if (!req.user || (req.user.role !== 'superadmin' && req.user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Faoliyatni bajarishga ruxsat yo‘q' });
+      }
+  
+      // Kategoriya markasini olish
+      const { name } = req.params; // URL parametrlardan 'name' ni olish
+  
+      // Markasi parametrining to'g'riligini tekshirish
+      if (typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ message: 'Iltimos, to‘g‘ri kategoriya nomini kiriting' });
+      }
+  
+      // Kategoriya topish
+      const category = await Category.findOne({ name: name.trim() });
+      if (!category) {
+        return res.status(404).json({ message: 'Kategoriya topilmadi' });
+      }
+  
+      // Bu kategoriya bilan bog'langan mashinalarni o'chirish
+      const cars = await Car.find({ category: category._id });
+      if (cars.length > 0) {
+        await Car.deleteMany({ category: category._id });
+      }
+  
+      // Kategoriyani o‘chirish
+      await Category.findOneAndDelete({ name: name.trim() });
+  
+      res.status(200).json({ message: 'Kategoriya va unga bog‘langan mashinalar o‘chirildi' });
     } catch (error) {
-        console.error('Kategoriya o‘chirish xatosi:', error.message);
-        res.status(500).json({ message: 'Server xatosi' });
+      console.error('Kategoriya o‘chirish xatosi:', error.message);
+      res.status(500).json({ message: 'Server xatosi' });
     }
 };
+
 
 module.exports = {
     getAllCategories,

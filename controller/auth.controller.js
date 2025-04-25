@@ -1,8 +1,10 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const BaseError = require("../utils/BaseError.js")
+// const BaseError = require("../utils/BaseError"); // Agar routes ichida bo‘lsa
+
 const { sendEmail } = require("../utils/email");
-const BaseError = require("../utils/BaseError");
 const { generateAccessToken, generateRefreshToken, REFRESH_SECRET } = require("../utils/jwt");
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -21,37 +23,30 @@ const register = async (req, res) => {
 
 
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = verificationCode
+
 
     const user = new User({
       username,
       email,
-      password:hashedPassword,
+      password: hashedPassword,
       phoneNumber,
-      otp:verificationCode,
-      otpExpires: new Date(Date.now() + 10 * 60 * 1000), 
+      otp: code,
+      otpExpires: new Date(Date.now() + 10 * 60 * 1000),
       isVerified: false,
     });
 
     await user.save();
-    await sendEmail(email, `Parolni tasdiqlash kodi: ${verificationCode}`);
+    await sendEmail(email, `Parolni tasdiqlash kodi: ${code}`);
 
     res.status(201).json({
       message: "Ro'yxatdan o'tildi, kod emailingizga yuborildi.",
-      // user: {
-      //   // username: user.username,
-      //   // email: user.email,
-      //   // otp: user.otp,
-      //   // otpExpires: user.otpExpires,
-      //   // isVerified: user.isVerified,
-      //   // phoneNumber: user.phoneNumber,
-      // },
     });
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message || "Server xatosi" });
   }
 };
 
-// 2. Emailni tasdiqlash (Verify Email)
 const verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -61,14 +56,13 @@ const verifyEmail = async (req, res) => {
       throw new BaseError("Foydalanuvchi topilmadi", 404);
     }
 
-    // Tasdiqlash kodini tekshirish
     if (user.otp !== String(code) || new Date() > user.otpExpires) {
       throw new BaseError("Noto‘g‘ri yoki eskirgan tasdiqlash kodi", 400);
     }
 
     user.isVerified = true;
-    user.otp = null;
-    user.otpExpires = null;
+    user.otp = 0;
+    user.otpExpires = 0;
     await user.save();
 
     res.status(200).json({
@@ -85,61 +79,64 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// 3. Kirish (Login)
 const login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-      return res.status(400).json({ message: "Email yoki parolni to'ldiring" });
+    return res.status(400).json({ message: "Email yoki parolni to'ldiring" });
   }
 
   try {
-      const user = await User.findOne({ email });
-      if (!user) {
-          return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
-      }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+    }
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-          return res.status(401).json({ message: "Parol noto‘g‘ri" });
-      }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Parol noto‘g‘ri" });
+    }
 
-      const accessToken = jwt.sign(
-          { id: user._id, email: user.email },
-          JWT_SECRET,
-          { expiresIn: '15m' }
-      );
+    const accessToken = jwt.sign(
+      { id: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
 
-      const refreshToken = jwt.sign(
-          { id: user._id, email: user.email },
-          process.env.REFRESH_SECRET,
-          { expiresIn: '7d' }
-      );
+    const refreshToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
 
-      user.refreshToken = refreshToken;
-      await user.save();
+    user.refreshToken = refreshToken;
+    await user.save();
 
-      res.cookie("accessToken", accessToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 15 * 60 * 1000, 
-      });
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 24 * 7 * 60 * 60 * 1000 })
 
-      res.status(200).json({
-          message: "Tizimga kirish muvaffaqiyatli",
-          accessToken,
-          refreshToken,
-      });
+    res.status(200).json({
+      message: "Tizimga kirish muvaffaqiyatli",
+      accessToken,
+      refreshToken,
+    });
   } catch (error) {
-      console.error("Login xatosi:", error.message);
-      res.status(500).json({ message: "Serverda xato yuz berdi" });
+    console.error("Login xatosi:", error.message);
+    res.status(500).json({ message: "Serverda xato yuz berdi" });
   }
 };
-// 4. Refresh Token
 const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new BaseError("Refresh token yuborilmadi", 400);
+    }
 
     const user = await User.findOne({ refreshToken });
     if (!user) {
@@ -150,15 +147,16 @@ const refreshToken = async (req, res) => {
       if (err) {
         throw new BaseError("Refresh token xato", 403);
       }
-      const accessToken = generateAccessToken(user._id);
+
+      const accessToken = generateAccessToken(user._id, user.role);
       res.status(200).json({ accessToken });
     });
+
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message || "Server xatosi" });
   }
 };
 
-// 5. Chiqish (Logout)
 const logout = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -166,7 +164,6 @@ const logout = async (req, res) => {
       throw new BaseError("Foydalanuvchi topilmadi", 404);
     }
 
-    // Refresh tokenni o'chirish
     user.refreshToken = null;
     await user.save();
 
@@ -189,7 +186,6 @@ const logout = async (req, res) => {
   }
 };
 
-// 6. Parolni tiklash kodi yuborish (Forgot Password)
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -199,11 +195,9 @@ const forgotPassword = async (req, res) => {
       throw new BaseError("Bu email bilan foydalanuvchi topilmadi", 404);
     }
 
-    // Parolni tiklash kodi yaratish
     const resetPasswordCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 daqiqa
+    const resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Kodni foydalanuvchiga yuborish
     user.resetPasswordCode = resetPasswordCode;
     user.resetPasswordExpires = resetPasswordExpires;
     await user.save();
@@ -218,7 +212,6 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// 7. Parolni yangilash (Change Password)
 const changePassword = async (req, res) => {
   try {
     const { email, resetPasswordCode, newPassword } = req.body;
@@ -228,12 +221,10 @@ const changePassword = async (req, res) => {
       throw new BaseError("Foydalanuvchi topilmadi", 404);
     }
 
-    // Reset kodi va muddati tekshiriladi
     if (user.resetPasswordCode !== resetPasswordCode || new Date() > user.resetPasswordExpires) {
       throw new BaseError("Noto‘g‘ri yoki eskirgan parol tiklash kodi", 400);
     }
 
-    // Parolni yangilash
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordCode = null;
     user.resetPasswordExpires = null;
@@ -248,11 +239,11 @@ const changePassword = async (req, res) => {
 };
 
 module.exports = {
-  register,
-  verifyEmail,
-  login,
+  register,//
+  verifyEmail,//
+  login,//
   refreshToken,
-  logout,
-  forgotPassword,
-  changePassword,
+  logout,//
+  forgotPassword,//
+  changePassword,//
 };

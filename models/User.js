@@ -1,25 +1,28 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
+    required: [true, "Foydalanuvchi nomi majburiy"],
+    unique: true,
     trim: true,
   },
   email: {
     type: String,
-    required: true,
+    required: [true, "Email majburiy"],
     unique: true,
     lowercase: true,
     trim: true,
   },
   password: {
     type: String,
-    required: true,
+    required: [true, "Parol majburiy"],
+    minlength: [6, "Parol kamida 6 belgidan iborat bo‘lishi kerak"],
   },
   phoneNumber: {
     type: String,
     trim: true,
+    default: null,
   },
   otp: {
     type: String,
@@ -47,11 +50,24 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin', 'superadmin'], // Ushbu yerda rollarni belgilaymiz
-    default: 'user', // Foydalanuvchilar uchun default rol "user"
-  }
+    enum: ["user", "admin", "superadmin"],
+    default: "user",
+  },
 }, {
   timestamps: true,
 });
 
-module.exports = mongoose.model('User', userSchema);
+// Maxfiy ma’lumotlarni yashirish uchun toJSON metodi
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.refreshToken;
+  delete obj.otp;
+  delete obj.otpExpires;
+  delete obj.resetPasswordCode;
+  delete obj.resetPasswordExpires;
+  return obj;
+};
+
+const User = mongoose.model("User", userSchema);
+module.exports = User;

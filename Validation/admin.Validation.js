@@ -15,7 +15,10 @@ const idSchema = Joi.object({
 const validateId = (req, res, next) => {
     const { error } = idSchema.validate(req.params);
     if (error) {
-        return res.status(400).json({ message: 'Validation error', errors: error.details.map(err => err.message) });
+        return res.status(400).json({ 
+            message: 'Validation error', 
+            errors: error.details.map(err => err.message) 
+        });
     }
     next();
 };
